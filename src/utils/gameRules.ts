@@ -1,51 +1,3 @@
-import type { RollResult } from './types';
-
-export function processRoll(die1: number, die2: number): RollResult {
-  if (die1 === 1 && die2 === 1) {
-    return {
-      event: 'doublePig',
-      points: 0,
-      resetTotal: true,
-      turnEnds: true,
-      mustRoll: false,
-    };
-  }
-  if (die1 === 1 || die2 === 1) {
-    return {
-      event: 'pig',
-      points: 0,
-      resetTotal: false,
-      turnEnds: true,
-      mustRoll: false,
-    };
-  }
-  if (die1 === 6 && die2 === 6) {
-    return {
-      event: 'jackpot',
-      points: 12 + 25,
-      resetTotal: false,
-      turnEnds: false,
-      mustRoll: false,
-    };
-  }
-  if (die1 === die2) {
-    return {
-      event: 'doubleBonus',
-      points: (die1 + die2) * 2,
-      resetTotal: false,
-      turnEnds: false,
-      mustRoll: true,
-    };
-  }
-  return {
-    event: 'normal',
-    points: die1 + die2,
-    resetTotal: false,
-    turnEnds: false,
-    mustRoll: false,
-  };
-}
-
 export function rollDice(): [number, number] {
   return [
     Math.floor(Math.random() * 6) + 1,
@@ -53,32 +5,12 @@ export function rollDice(): [number, number] {
   ];
 }
 
-export function getEventLabel(event: string | null): string {
-  switch (event) {
-    case 'doublePig':
-      return 'COCHON ! Tu perds tout !';
-    case 'pig':
-      return 'PIG ! Tu perds ce tour';
-    case 'doubleBonus':
-      return 'DOUBLE BONUS ! Points doublés !';
-    case 'jackpot':
-      return 'JACKPOT ! +25 pts bonus !';
-    default:
-      return '';
-  }
+/** Somme des deux dés (2-12) */
+export function rollSum(die1: number, die2: number): number {
+  return die1 + die2;
 }
 
-export function getEventEmoji(event: string | null): string {
-  switch (event) {
-    case 'doublePig':
-      return '🐷';
-    case 'pig':
-      return '❌';
-    case 'doubleBonus':
-      return '🔥';
-    case 'jackpot':
-      return '🎉';
-    default:
-      return '';
-  }
+/** Règle du Million : double 1 (somme 2) gagne le tour quand la règle est activée */
+export function isMillionWin(die1: number, die2: number, millionRuleEnabled: boolean): boolean {
+  return millionRuleEnabled && die1 === 1 && die2 === 1;
 }

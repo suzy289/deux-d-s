@@ -1,66 +1,92 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Dice } from './Dice';
-import { getEventLabel, getEventEmoji } from '../utils/gameRules';
-import type { RollEvent } from '../utils/types';
+import type { Player } from '../utils/types';
 
 interface DiceRollerProps {
-  lastRoll: [number, number];
-  currentTurnScore: number;
-  lastEvent: RollEvent;
+  currentPlayer: Player | null;
   isRolling: boolean;
-  hasRolled: boolean;
+  roundNumber: number;
+  millionRuleTriggered: boolean;
+  phase: 'rolling' | 'finished';
+  roundWinners: Player[];
 }
 
 export function DiceRoller({
-  lastRoll,
-  currentTurnScore,
-  lastEvent,
+  currentPlayer,
   isRolling,
-  hasRolled,
+  roundNumber,
+  millionRuleTriggered,
+  phase,
+  roundWinners,
 }: DiceRollerProps) {
-  const [d1, d2] = lastRoll;
+  const hasRolled = currentPlayer != null && currentPlayer.lastRoll !== null && (currentPlayer.lastRoll[0] + currentPlayer.lastRoll[1]) > 0;
+  const [d1, d2] = currentPlayer?.lastRoll ?? [0, 0];
   const sum = d1 + d2;
-  const showDice = hasRolled || isRolling;
+  const isTie = roundWinners.length > 1;
+
+  if (phase === 'finished') {
+    return (
+      <div className="flex flex-col items-center gap-4 py-4">
+        <p className="text-amber-200/90 text-sm">Tour n° {roundNumber} terminé</p>
+        {millionRuleTriggered && (
+          <p className="text-casino-accent font-bold">🎉 Règle du Million — Double 1 gagne le tour !</p>
+        )}
+        {isTie ? (
+          <p className="text-amber-100 font-semibold text-center">
+            Égalité entre {roundWinners.map((w) => w.name).join(' et ')} — partage du tour.
+          </p>
+        ) : roundWinners.length > 0 && roundWinners[0] ? (
+          <p className="text-amber-100 font-semibold text-center">
+            Gagnant du tour : <span style={{ color: roundWinners[0].color }}>{roundWinners[0].name}</span>
+            {` avec ${roundWinners[0].rollSum}`}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col items-center gap-6 py-6">
+    <div className="flex flex-col items-center gap-5 py-4">
+      <p className="text-amber-200/90 text-sm">Tour n° {roundNumber} — {currentPlayer ? `À ${currentPlayer.name} de lancer` : ''}</p>
       <div className="flex items-center justify-center gap-6 sm:gap-8">
-        <Dice value={isRolling ? Math.floor(Math.random() * 6) + 1 : d1 || 1} isRolling={isRolling} size="lg" />
-        <Dice value={isRolling ? Math.floor(Math.random() * 6) + 1 : d2 || 1} isRolling={isRolling} size="lg" />
+        <div className="flex flex-col items-center gap-2">
+          <Dice
+            value={d1 >= 1 && d1 <= 6 ? d1 : 1}
+            isRolling={isRolling}
+            size="lg"
+          />
+          <span className="text-amber-200/80 text-sm font-medium">Dé 1 : {d1 >= 1 && d1 <= 6 ? d1 : '—'}</span>
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <Dice
+            value={d2 >= 1 && d2 <= 6 ? d2 : 1}
+            isRolling={isRolling}
+            size="lg"
+          />
+          <span className="text-amber-200/80 text-sm font-medium">Dé 2 : {d2 >= 1 && d2 <= 6 ? d2 : '—'}</span>
+        </div>
       </div>
-
-      <AnimatePresence mode="wait">
-        {lastEvent && hasRolled && !isRolling && (
-          <motion.div
-            key={lastEvent}
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0 }}
-            className={`
-              px-4 py-2 rounded-xl text-center font-semibold text-sm sm:text-base
-              ${lastEvent === 'doublePig' ? 'bg-red-500/20 text-red-200 border border-red-500/50' : ''}
-              ${lastEvent === 'pig' ? 'bg-amber-500/20 text-amber-200 border border-amber-500/50' : ''}
-              ${lastEvent === 'doubleBonus' ? 'bg-orange-500/20 text-orange-200 border border-orange-500/50' : ''}
-              ${lastEvent === 'jackpot' ? 'bg-yellow-500/20 text-yellow-200 border border-yellow-500/50' : ''}
-              ${lastEvent === 'normal' ? 'bg-emerald-500/10 text-emerald-200 border border-emerald-500/30' : ''}
-            `}
-          >
-            <span className="mr-2">{getEventEmoji(lastEvent)}</span>
-            {getEventLabel(lastEvent) || `Résultat : ${sum}`}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-slate-200">
-        {showDice && (
-          <span className="text-lg sm:text-xl font-medium">
-            Résultat : <strong className="text-white">{sum}</strong>
-          </span>
-        )}
-        <span className="text-lg sm:text-xl font-medium">
-          Score du tour : <strong className="text-gold-light">{currentTurnScore}</strong>
-        </span>
-      </div>
+      {hasRolled && (
+        <div className="text-center text-amber-100/90">
+          <p className="text-lg font-medium">
+            Face dé 1 : <strong className="text-white">{d1}</strong>
+            {' + '}
+            Face dé 2 : <strong className="text-white">{d2}</strong>
+            {' → '}
+            Somme : <strong className="text-casino-accent">{sum}</strong>
+          </p>
+          <p className="text-sm text-amber-200/70 mt-1">Les numéros affichés sur les deux faces sont additionnés.</p>
+        </div>
+      )}
+      {millionRuleTriggered && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="px-4 py-2 rounded-lg bg-casino-accent/30 text-amber-950 font-bold text-sm sm:text-base border border-casino-accent"
+        >
+          🎉 Règle du Million — Double 1 gagne le tour !
+        </motion.div>
+      )}
     </div>
   );
 }

@@ -4,18 +4,14 @@ import type { Player } from '../utils/types';
 
 interface ScoreboardProps {
   players: Player[];
-  maxScore: number;
   currentPlayerIndex: number;
-  currentTurnScore: number;
   onPlayerNameChange?: (index: number, name: string) => void;
   editableNames?: boolean;
 }
 
 export function Scoreboard({
   players,
-  maxScore,
   currentPlayerIndex,
-  currentTurnScore,
   onPlayerNameChange,
   editableNames = true,
 }: ScoreboardProps) {
@@ -29,16 +25,9 @@ export function Scoreboard({
       `}
     >
       {players.map((player, index) => (
-        <motion.div
-          key={player.id}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.05 }}
-        >
+        <motion.div key={player.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
           <PlayerCard
             player={player}
-            maxScore={maxScore}
-            currentTurnScore={currentPlayerIndex === index ? currentTurnScore : 0}
             isActive={currentPlayerIndex === index}
             onNameChange={onPlayerNameChange ? (name) => onPlayerNameChange(index, name) : undefined}
             editable={editableNames}

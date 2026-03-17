@@ -33,9 +33,9 @@ export function Dice({ value, isRolling = false, size = 'md' }: DiceProps) {
     <motion.div
       className={`
         ${sizeClasses[size]}
-        rounded-xl bg-gradient-to-br from-white to-gray-100
-        dark:from-gray-100 dark:to-gray-200
-        shadow-lg border-2 border-gray-200 dark:border-gray-500
+        rounded-lg dice-casino
+        bg-gradient-to-br from-white via-gray-50 to-gray-100
+        border border-gray-200/80
         flex items-center justify-center relative overflow-hidden
       `}
       animate={
@@ -43,7 +43,7 @@ export function Dice({ value, isRolling = false, size = 'md' }: DiceProps) {
           ? {
               rotateX: [0, 180, 360],
               rotateY: [0, 180, 360],
-              scale: [1, 1.15, 1],
+              scale: [1, 1.12, 1],
               transition: { duration: 0.5, ease: 'easeOut' },
             }
           : {}
@@ -54,7 +54,7 @@ export function Dice({ value, isRolling = false, size = 'md' }: DiceProps) {
         {dots.map(([x, y], i) => (
           <span
             key={i}
-            className={`absolute rounded-full bg-gray-800 dark:bg-gray-900 ${dotSizes[size]}`}
+            className={`absolute rounded-full bg-gray-800 ${dotSizes[size]}`}
             style={{
               left: `${x * 100}%`,
               top: `${y * 100}%`,

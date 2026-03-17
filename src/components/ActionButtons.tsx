@@ -2,71 +2,71 @@ import { motion } from 'framer-motion';
 
 interface ActionButtonsProps {
   onRoll: () => void;
-  onHold: () => void;
+  onReplayRound: () => void;
   canRoll: boolean;
-  canHold: boolean;
   isRolling: boolean;
   isAiTurn: boolean;
+  phase: 'rolling' | 'finished';
+  timerRemaining: number | null;
 }
 
 export function ActionButtons({
   onRoll,
-  onHold,
+  onReplayRound,
   canRoll,
-  canHold,
   isRolling,
   isAiTurn,
+  phase,
+  timerRemaining,
 }: ActionButtonsProps) {
+  if (phase === 'finished') {
+    return (
+      <div className="flex flex-col items-center gap-2 mt-2">
+        <motion.button
+          type="button"
+          onClick={onReplayRound}
+          className="px-8 py-4 sm:px-12 sm:py-5 rounded-xl font-bold text-lg sm:text-xl uppercase tracking-wider bg-casino-accent text-casino-dark shadow-lg shadow-casino-accent/30 hover:bg-casino-accent-hover hover:scale-[1.02] active:scale-[0.98] transition-all"
+        >
+          Rejouer le tour
+        </motion.button>
+        <p className="text-amber-200/80 text-sm">Même paramètres, premier joueur tiré au hasard</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-wrap items-center justify-center gap-4">
+    <div className="flex flex-col items-center justify-center gap-2 mt-2">
+      {timerRemaining !== null && timerRemaining > 0 && (
+        <p className="text-amber-200/90 text-sm">
+          Temps restant : <strong className="text-casino-accent">{timerRemaining}s</strong>
+        </p>
+      )}
       <motion.button
         type="button"
         onClick={onRoll}
         disabled={!canRoll || isRolling || isAiTurn}
         className={`
-          px-6 py-3 sm:px-8 sm:py-4 rounded-xl font-bold text-lg
-          flex items-center gap-2 transition-all
+          px-8 py-4 sm:px-12 sm:py-5 rounded-xl font-bold text-lg sm:text-xl uppercase tracking-wider
+          flex items-center justify-center gap-2 transition-all min-w-[200px]
           ${canRoll && !isRolling && !isAiTurn
-            ? 'bg-amber-500 hover:bg-amber-400 text-slate-900 shadow-lg shadow-amber-500/30 hover:scale-105 active:scale-100'
-            : 'bg-slate-600 text-slate-400 cursor-not-allowed'
+            ? 'bg-casino-accent text-casino-dark shadow-lg shadow-casino-accent/30 hover:bg-casino-accent-hover hover:scale-[1.02] active:scale-[0.98]'
+            : 'bg-amber-900/50 text-amber-200/50 cursor-not-allowed border border-amber-800/50'
           }
         `}
-        whileHover={canRoll && !isRolling && !isAiTurn ? { scale: 1.02 } : {}}
-        whileTap={canRoll && !isRolling && !isAiTurn ? { scale: 0.98 } : {}}
       >
         {isRolling ? (
           <>
-            <span className="inline-block w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-            Lancement...
+            <span className="inline-block w-5 h-5 border-2 border-casino-dark border-t-transparent rounded-full animate-spin" />
+            <span>Lancement...</span>
           </>
         ) : (
           <>
-            <span>🎲</span>
-            Lancer les dés
+            <span aria-hidden>🎲</span>
+            <span>Lancer les dés</span>
           </>
         )}
       </motion.button>
-      <motion.button
-        type="button"
-        onClick={onHold}
-        disabled={!canHold || isRolling || isAiTurn}
-        className={`
-          px-6 py-3 sm:px-8 sm:py-4 rounded-xl font-bold text-lg
-          flex items-center gap-2 transition-all
-          ${canHold && !isRolling && !isAiTurn
-            ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 hover:scale-105 active:scale-100'
-            : 'bg-slate-600 text-slate-400 cursor-not-allowed'
-          }
-        `}
-        whileHover={canHold && !isRolling && !isAiTurn ? { scale: 1.02 } : {}}
-        whileTap={canHold && !isRolling && !isAiTurn ? { scale: 0.98 } : {}}
-      >
-        <span>💾</span>
-        Garder
-      </motion.button>
-      {isAiTurn && (
-        <p className="text-slate-400 text-sm w-full text-center">C’est au tour de l’IA...</p>
-      )}
+      {isAiTurn && <p className="text-amber-200/80 text-sm">Au tour de l’IA...</p>}
     </div>
   );
 }

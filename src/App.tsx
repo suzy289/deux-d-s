@@ -1,21 +1,15 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useGameState } from './hooks/useGameState';
 import { Scoreboard } from './components/Scoreboard';
 import { DiceRoller } from './components/DiceRoller';
 import { ActionButtons } from './components/ActionButtons';
 import { GameLog } from './components/GameLog';
-import { WinnerModal } from './components/WinnerModal';
 import { SettingsPanel } from './components/SettingsPanel';
 import type { GameSettings, Player } from './utils/types';
 
 function App() {
-  const { state, roll, hold, reset, updatePlayerName, setPlayers } = useGameState();
+  const { state, roll, newRound, reset, updatePlayerName, setPlayers } = useGameState();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [showWinnerModal, setShowWinnerModal] = useState(true);
-
-  useEffect(() => {
-    if (state.winner) setShowWinnerModal(true);
-  }, [state.winner]);
 
   const handleNewGame = useCallback(() => {
     reset();
@@ -29,96 +23,80 @@ function App() {
     [reset, setPlayers]
   );
 
-  const hasRolled = state.lastRoll[0] > 0 || state.lastRoll[1] > 0;
+  const currentPlayer = state.players[state.currentPlayerIndex] ?? null;
   const canRoll =
-    !state.gameOver &&
+    state.phase === 'rolling' &&
     !state.isRolling &&
-    !state.players[state.currentPlayerIndex]?.isAI;
-  const canHold =
-    !state.gameOver &&
-    !state.mustRoll &&
-    state.currentTurnScore > 0 &&
-    !state.players[state.currentPlayerIndex]?.isAI;
+    currentPlayer?.lastRoll === null &&
+    !currentPlayer?.isAI;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 font-['Outfit',sans-serif]">
-      <header className="border-b border-slate-600/50 bg-slate-900/50 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-            <span className="text-3xl">🎲</span>
-            Jeu des Deux Dés
-          </h1>
+    <div className="min-h-screen bg-casino-dark text-white font-['Outfit',sans-serif] flex flex-col">
+      <header className="flex-shrink-0 h-14 sm:h-16 px-4 flex items-center justify-between bg-casino-dark border-b border-white/10">
+        <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-slate-400 text-sm sm:text-base">
-              Tour n° {state.turnNumber}
-            </span>
-            {state.lastTurnTriggered && (
-              <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-medium">
-                Dernier tour
-              </span>
-            )}
+            <span className="text-2xl" aria-hidden>🎲</span>
+            <span className="text-lg sm:text-xl font-bold tracking-tight text-white">Deux Dés</span>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleNewGame}
-              className="px-4 py-2 rounded-lg font-medium bg-slate-600 hover:bg-slate-500 text-white transition-colors text-sm"
-            >
-              Nouvelle partie
-            </button>
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              className="px-4 py-2 rounded-lg font-medium bg-slate-600 hover:bg-slate-500 text-white transition-colors text-sm"
-            >
-              Paramètres
-            </button>
-          </div>
+          <span className="hidden sm:inline text-white/50">|</span>
+          <span className="text-white/80 text-sm sm:text-base">
+            Tour n° <strong className="text-casino-accent">{state.roundNumber}</strong>
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="px-3 py-1.5 rounded-lg text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            Paramètres
+          </button>
+          <button
+            type="button"
+            onClick={handleNewGame}
+            className="px-4 py-2 rounded-lg font-semibold text-sm bg-casino-accent text-casino-dark hover:bg-casino-accent-hover transition-colors shadow-lg shadow-casino-accent/20"
+          >
+            Nouvelle partie
+          </button>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-        <section>
-          <Scoreboard
-            players={state.players}
-            maxScore={state.settings.maxScore}
-            currentPlayerIndex={state.currentPlayerIndex}
-            currentTurnScore={state.currentTurnScore}
-            onPlayerNameChange={updatePlayerName}
-            editableNames={!state.players[state.currentPlayerIndex]?.isAI}
-          />
-        </section>
-
-        <section className="rounded-2xl bg-slate-800/50 border border-slate-600/50 p-6 sm:p-8">
-          <DiceRoller
-            lastRoll={state.lastRoll}
-            currentTurnScore={state.currentTurnScore}
-            lastEvent={state.lastEvent}
-            isRolling={state.isRolling}
-            hasRolled={hasRolled}
-          />
-          <ActionButtons
-            onRoll={roll}
-            onHold={hold}
-            canRoll={canRoll}
-            canHold={canHold}
-            isRolling={state.isRolling}
-            isAiTurn={state.players[state.currentPlayerIndex]?.isAI ?? false}
-          />
-        </section>
-
-        <section>
-          <GameLog log={state.log} maxHeight="14rem" />
-        </section>
+      <main className="flex-1 flex flex-col items-center justify-center p-4 min-h-0">
+        <div className="w-full max-w-4xl flex flex-col lg:flex-row gap-4 items-center justify-center">
+          <section className="relative w-full max-w-2xl rounded-2xl overflow-hidden wood-planks flex flex-col min-h-[440px] sm:min-h-[500px]">
+            <div className="relative z-10 flex-shrink-0 p-4 pb-0">
+              <Scoreboard
+                players={state.players}
+                currentPlayerIndex={state.currentPlayerIndex}
+                onPlayerNameChange={updatePlayerName}
+                editableNames={!currentPlayer?.isAI}
+              />
+            </div>
+            <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-6">
+              <DiceRoller
+                currentPlayer={currentPlayer}
+                isRolling={state.isRolling}
+                roundNumber={state.roundNumber}
+                millionRuleTriggered={state.millionRuleTriggered}
+                phase={state.phase}
+                roundWinners={state.roundWinners}
+              />
+              <ActionButtons
+                onRoll={roll}
+                onReplayRound={newRound}
+                canRoll={canRoll}
+                isRolling={state.isRolling}
+                isAiTurn={currentPlayer?.isAI ?? false}
+                phase={state.phase}
+                timerRemaining={state.timerRemaining}
+              />
+            </div>
+          </section>
+          <aside className="w-full lg:w-72 flex-shrink-0">
+            <GameLog log={state.log} maxHeight="320px" />
+          </aside>
+        </div>
       </main>
-
-      {state.winner && showWinnerModal && (
-        <WinnerModal
-          winner={state.winner}
-          onClose={() => setShowWinnerModal(false)}
-          onNewGame={() => { setShowWinnerModal(false); handleNewGame(); }}
-        />
-      )}
 
       <SettingsPanel
         isOpen={settingsOpen}

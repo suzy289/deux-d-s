@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { GameSettings, Player, AIDifficulty } from '../utils/types';
-import { SCORE_OPTIONS, PLAYER_COLORS, DEFAULT_PLAYER_NAMES } from '../utils/constants';
+import { PLAYER_COLORS, DEFAULT_PLAYER_NAMES, THINKING_TIME_OPTIONS } from '../utils/constants';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -12,11 +12,23 @@ interface SettingsPanelProps {
 }
 
 const AI_OPTIONS: { value: AIDifficulty; label: string }[] = [
-  { value: 'prudente', label: 'Prudente (garde à 15)' },
-  { value: 'normale', label: 'Normale (garde à 20)' },
-  { value: 'agressive', label: 'Agressive (garde à 30)' },
+  { value: 'prudente', label: 'Prudente' },
+  { value: 'normale', label: 'Normale' },
+  { value: 'agressive', label: 'Agressive' },
   { value: 'adaptative', label: 'Adaptative' },
 ];
+
+function createPlayer(id: number, name: string, color: string, isAI: boolean): Player {
+  return {
+    id,
+    name,
+    color,
+    isAI,
+    lastRoll: null,
+    rollSum: 0,
+    roundWins: 0,
+  };
+}
 
 export function SettingsPanel({
   isOpen,
@@ -26,30 +38,25 @@ export function SettingsPanel({
   onApply,
 }: SettingsPanelProps) {
   const [playerCount, setPlayerCount] = useState(currentSettings.playerCount);
-  const [maxScore, setMaxScore] = useState(currentSettings.maxScore);
-  const [lastTurnMode, setLastTurnMode] = useState(currentSettings.lastTurnMode);
+  const [millionRule, setMillionRule] = useState(currentSettings.millionRule);
+  const [thinkingTimeSeconds, setThinkingTimeSeconds] = useState(currentSettings.thinkingTimeSeconds);
   const [localPlayers, setLocalPlayers] = useState<Player[]>(players);
 
   useEffect(() => {
     if (!isOpen) return;
     setPlayerCount(currentSettings.playerCount);
-    setMaxScore(currentSettings.maxScore);
-    setLastTurnMode(currentSettings.lastTurnMode);
+    setMillionRule(currentSettings.millionRule);
+    setThinkingTimeSeconds(currentSettings.thinkingTimeSeconds);
     if (players.length === currentSettings.playerCount) {
       setLocalPlayers(players.map((p) => ({ ...p })));
     } else {
       setLocalPlayers(
-        Array.from({ length: currentSettings.playerCount }, (_, i) => ({
-          id: i + 1,
-          name: DEFAULT_PLAYER_NAMES[i],
-          totalScore: 0,
-          isActive: i === 0,
-          isAI: false,
-          color: PLAYER_COLORS[i],
-        }))
+        Array.from({ length: currentSettings.playerCount }, (_, i) =>
+          createPlayer(i + 1, DEFAULT_PLAYER_NAMES[i], PLAYER_COLORS[i], false)
+        )
       );
     }
-  }, [isOpen, currentSettings.playerCount, currentSettings.maxScore, currentSettings.lastTurnMode, players]);
+  }, [isOpen, currentSettings, players]);
 
   const updatePlayer = (index: number, updates: Partial<Player>) => {
     setLocalPlayers((prev) =>
@@ -63,14 +70,9 @@ export function SettingsPanel({
       if (count > prev.length) {
         return [
           ...prev,
-          ...Array.from({ length: count - prev.length }, (_, i) => ({
-            id: prev.length + i + 1,
-            name: DEFAULT_PLAYER_NAMES[prev.length + i],
-            totalScore: 0,
-            isActive: false,
-            isAI: false,
-            color: PLAYER_COLORS[prev.length + i],
-          })),
+          ...Array.from({ length: count - prev.length }, (_, i) =>
+            createPlayer(prev.length + i + 1, DEFAULT_PLAYER_NAMES[prev.length + i], PLAYER_COLORS[prev.length + i], false)
+          ),
         ];
       }
       return prev.slice(0, count);
@@ -79,8 +81,8 @@ export function SettingsPanel({
 
   const handleApply = () => {
     onApply(
-      { playerCount, maxScore, lastTurnMode },
-      localPlayers.map((p, i) => ({ ...p, isActive: i === 0 }))
+      { playerCount, millionRule, thinkingTimeSeconds },
+      localPlayers.map((p) => ({ ...p, lastRoll: null, rollSum: 0, roundWins: 0 }))
     );
     onClose();
   };
@@ -99,86 +101,67 @@ export function SettingsPanel({
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+            className="bg-casino-dark border border-amber-900/60 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-slate-600 flex items-center justify-between">
+            <div className="p-6 border-b border-amber-900/50 flex items-center justify-between">
               <h2 className="text-xl font-bold text-white">Paramètres</h2>
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-slate-400 hover:text-white text-2xl leading-none"
-              >
-                ×
-              </button>
+              <button type="button" onClick={onClose} className="text-amber-200/70 hover:text-white text-2xl leading-none">×</button>
             </div>
             <div className="p-6 space-y-6">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Nombre de joueurs
-                </label>
+                <label className="block text-sm font-medium text-amber-200/80 mb-2">Nombre de joueurs (2 à 4)</label>
                 <select
                   value={playerCount}
                   onChange={(e) => handlePlayerCountChange(Number(e.target.value))}
-                  className="w-full px-4 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:border-amber-500 focus:outline-none"
+                  className="w-full px-4 py-2 rounded-lg bg-black/30 text-white border border-amber-800/50 focus:border-casino-accent focus:outline-none"
                 >
                   {[2, 3, 4].map((n) => (
-                    <option key={n} value={n}>
-                      {n} joueurs
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Score pour gagner
-                </label>
-                <select
-                  value={maxScore}
-                  onChange={(e) => setMaxScore(Number(e.target.value))}
-                  className="w-full px-4 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:border-amber-500 focus:outline-none"
-                >
-                  {SCORE_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {s} points
-                    </option>
+                    <option key={n} value={n}>{n} joueurs</option>
                   ))}
                 </select>
               </div>
               <div className="flex items-center gap-3">
                 <input
                   type="checkbox"
-                  id="lastTurn"
-                  checked={lastTurnMode}
-                  onChange={(e) => setLastTurnMode(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-amber-500 focus:ring-amber-500"
+                  id="millionRule"
+                  checked={millionRule}
+                  onChange={(e) => setMillionRule(e.target.checked)}
+                  className="w-4 h-4 rounded border-amber-700 bg-black/30 text-casino-accent focus:ring-casino-accent"
                 />
-                <label htmlFor="lastTurn" className="text-slate-300 text-sm">
-                  Mode dernier tour (les autres joueurs ont un tour après 100 pts)
+                <label htmlFor="millionRule" className="text-amber-200/80 text-sm">
+                  Règle du Million : double 1 (somme 2) gagne automatiquement le tour
                 </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-3">
-                  Joueurs
-                </label>
+                <label className="block text-sm font-medium text-amber-200/80 mb-2">Temps de réflexion (secondes)</label>
+                <select
+                  value={thinkingTimeSeconds}
+                  onChange={(e) => setThinkingTimeSeconds(Number(e.target.value))}
+                  className="w-full px-4 py-2 rounded-lg bg-black/30 text-white border border-amber-800/50 focus:border-casino-accent focus:outline-none"
+                >
+                  {THINKING_TIME_OPTIONS.map((s) => (
+                    <option key={s} value={s}>
+                      {s === 0 ? 'Illimité' : `${s} s`}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-amber-200/60 text-xs mt-1">Si le temps est dépassé, le tour est perdu.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-amber-200/80 mb-3">Joueurs</label>
                 <div className="space-y-3">
                   {localPlayers.map((player, index) => (
-                    <div
-                      key={player.id}
-                      className="flex flex-wrap items-center gap-3 p-3 rounded-lg bg-slate-700/50"
-                    >
-                      <div
-                        className="w-8 h-8 rounded-full border-2 border-white/30 flex-shrink-0"
-                        style={{ backgroundColor: player.color }}
-                      />
+                    <div key={player.id} className="flex flex-wrap items-center gap-3 p-3 rounded-lg bg-amber-950/30 border border-amber-900/40">
+                      <div className="w-8 h-8 rounded-full border-2 border-amber-700/50 flex-shrink-0" style={{ backgroundColor: player.color }} />
                       <input
                         type="text"
                         value={player.name}
                         onChange={(e) => updatePlayer(index, { name: e.target.value })}
-                        className="flex-1 min-w-0 px-3 py-1.5 rounded bg-slate-700 text-white border border-slate-600 focus:border-amber-500 focus:outline-none text-sm"
+                        className="flex-1 min-w-0 px-3 py-1.5 rounded bg-black/30 text-white border border-amber-800/50 focus:border-casino-accent focus:outline-none text-sm"
                         placeholder="Nom"
                       />
-                      <label className="flex items-center gap-2 text-sm text-slate-300">
+                      <label className="flex items-center gap-2 text-sm text-amber-200/80">
                         <input
                           type="checkbox"
                           checked={player.isAI}
@@ -194,17 +177,11 @@ export function SettingsPanel({
                       {player.isAI && (
                         <select
                           value={player.aiDifficulty || 'normale'}
-                          onChange={(e) =>
-                            updatePlayer(index, {
-                              aiDifficulty: e.target.value as AIDifficulty,
-                            })
-                          }
-                          className="px-2 py-1 rounded bg-slate-700 text-white border border-slate-600 text-sm"
+                          onChange={(e) => updatePlayer(index, { aiDifficulty: e.target.value as AIDifficulty })}
+                          className="px-2 py-1 rounded bg-black/30 text-white border border-amber-800/50 text-sm"
                         >
                           {AI_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
                           ))}
                         </select>
                       )}
@@ -213,19 +190,11 @@ export function SettingsPanel({
                 </div>
               </div>
             </div>
-            <div className="p-6 border-t border-slate-600 flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded-lg font-medium bg-slate-600 text-white hover:bg-slate-500"
-              >
+            <div className="p-6 border-t border-amber-900/50 flex gap-3 justify-end">
+              <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg font-medium bg-white/10 text-amber-100 border border-amber-700/50 hover:bg-white/20">
                 Annuler
               </button>
-              <button
-                type="button"
-                onClick={handleApply}
-                className="px-4 py-2 rounded-lg font-medium bg-amber-500 text-slate-900 hover:bg-amber-400"
-              >
+              <button type="button" onClick={handleApply} className="px-4 py-2 rounded-lg font-medium bg-casino-accent text-casino-dark hover:bg-casino-accent-hover">
                 Appliquer et nouvelle partie
               </button>
             </div>

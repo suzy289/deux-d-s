@@ -9,6 +9,12 @@ export default {
         'felt-light': '#117a3d',
         gold: '#d4af37',
         'gold-light': '#f4e4a6',
+        casino: {
+          dark: '#0a0a0b',
+          wood: '#3d2318',
+          accent: '#e8a317',
+          'accent-hover': '#f5b428',
+        },
       },
     },
   },
